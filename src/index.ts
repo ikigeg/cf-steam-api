@@ -10,11 +10,22 @@ export interface Env {
 	STEAM_API_KEY: string;
 }
 
+// https://developers.cloudflare.com/workers/examples/cors-header-proxy/
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET,HEAD,POST,OPTIONS',
+  'Access-Control-Max-Age': '86400',
+};
+
 const steamApi = `https://api.steampowered.com`;
+
+const generateResponse = (body: any, type: 'json' | 'string' = 'string', status: number = 200) => {
+  return new Response(type === 'json' ? JSON.stringify(body): body, { status, headers: { ...corsHeaders, ...(type==='json' && { 'content-type': 'application/json;charset=UTF-8', }) } });
+}
 
 const getSteamId = async (key: string, vanity: string) => {
   if (!vanity) {
-    return new Response("Invalid query", {status: 400});
+    return generateResponse("Invalid query", 'string', 400);
   }
 
 	try {
@@ -23,22 +34,18 @@ const getSteamId = async (key: string, vanity: string) => {
 
 		if (steamid || vanity.match(/^[0-9]+$/) !== null) {
 			// possibly they passed a steamid as the vanity
-      return new Response(JSON.stringify({ steamid: steamid || vanity }), {
-        headers: {
-          'content-type': 'application/json;charset=UTF-8',
-        },
-      });
+      return generateResponse({ steamid: steamid || vanity }, 'json');
 		}
 
-		return new Response("Not found", {status: 404});
+		return generateResponse("Not found", 'string', 404);
 	} catch (err) {
-		return new Response("Unable to verify id", {status: 500});
+		return generateResponse("Unable to verify id", 'string', 500);
 	}
 }
 
 const getOwnedGames = async (key: string, steamid: string) => {
   if (!steamid) {
-    return new Response("Invalid query", {status: 400});
+    return generateResponse("Invalid query", 'string', 400);
   }
 
 	try {
@@ -47,16 +54,12 @@ const getOwnedGames = async (key: string, steamid: string) => {
 
 		if (games && game_count) {
 			// possibly they passed a steamid as the vanity
-      return new Response(JSON.stringify({ games, game_count }), {
-        headers: {
-          'content-type': 'application/json;charset=UTF-8',
-        },
-      });
+      return generateResponse({ games, game_count }, 'json');
 		}
 
-		return new Response("Not found", {status: 404});
+		return generateResponse("Not found", 'string', 404);
 	} catch (err) {
-		return new Response("Unable to query owned games", {status: 500});
+		return generateResponse("Unable to query owned games", 'string', 500);
 	}
 }
 
@@ -73,7 +76,7 @@ async function handleApiRequest(path: string[], request: Request, env: Env) {
     }
 
     default:
-      return new Response("Not found", {status: 404});
+      return generateResponse("Not found", 'string', 404);
   }
 }
 
@@ -92,7 +95,7 @@ export default {
       }
 
 			default:
-				return new Response("Not found", {status: 404});
+				return generateResponse("Not found", 'string', 404);
 		}
 	},
 };
