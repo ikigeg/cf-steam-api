@@ -43,18 +43,25 @@ const getSteamId = async (key: string, vanity: string) => {
 	}
 }
 
-const getOwnedGames = async (key: string, steamid: string) => {
-  if (!steamid) {
+const getOwnedGames = async (key: string, steamidParam: string) => {
+  if (!steamidParam) {
     return generateResponse("Invalid query", 'string', 400);
   }
 
+  
 	try {
+    let steamid = steamidParam;
+    if (steamid.match(/^[0-9]+$/) === null) {
+      const vanityQuery = await fetch(`${steamApi}/ISteamUser/ResolveVanityURL/v1?key=${key}&vanityurl=${steamid}`);
+		  ({ response: { steamid } } = await vanityQuery.json());
+    }
+
 		const ownedGamesQuery = await fetch(`${steamApi}/IPlayerService/GetOwnedGames/v0001/?key=${key}&steamid=${steamid}&format=json&include_appinfo=true&include_played_free_games=true`);
 		const { response: { games, game_count } } = await ownedGamesQuery.json();
 
 		if (games && game_count) {
 			// possibly they passed a steamid as the vanity
-      return generateResponse({ games, game_count }, 'json');
+      return generateResponse({ games, game_count, steamid }, 'json');
 		}
 
 		return generateResponse("Not found", 'string', 404);
